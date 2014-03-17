@@ -1,4 +1,4 @@
-Switchable Seats/n
+Switchable Seats[br]
 ================/n
 /n
 This tool is still in development! Please reaport any bug that you can find, that relates to this addon./n
