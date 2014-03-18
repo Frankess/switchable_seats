@@ -1,13 +1,17 @@
 TOOL.Category		= "Construction"
-TOOL.Name			= "#tool.battlefieldseats.name"
+TOOL.Name			= "#tool.switchableseats.name"
 TOOL.Command		= nil
 TOOL.ConfigName		= ""
 
 if CLIENT then
-	language.Add( "tool.battlefieldseats.name", "Switchable seats - BETA" )
-	language.Add( "Tool.battlefieldseats.desc", "Allows you to switch between seats without leaving vehicle." )
-	language.Add( "Tool.battlefieldseats.0", " E+LMB - select vehicle, LMB - select single chair in vehicle, SHIFT+LMB - select entrance props, RMB - Accept changes" )
-	language.Add( "tool.battlefieldseats.setexit", "Set exit point for this vehicle" )
+	language.Add( "tool.switchableseats.name", "Switchable seats - BETA" )
+	language.Add( "Tool.switchableseats.desc", "Allows you to switch between seats without leaving vehicle." )
+	language.Add( "Tool.switchableseats.0", " E+LMB - select vehicle, LMB - select single chair in vehicle, SHIFT+LMB - select entrance props, RMB - Accept changes" )
+	language.Add( "tool.switchableseats.setexit", "Set exit point for this vehicle" )
+	language.Add( "tool.switchableseats.selvegfirst", "You need to select vehicle with seats first!" )
+	language.Add( "tool.switchableseats.selseatfirst", "You need to select a seat first!" )
+	language.Add( "tool.switchableseats.vehfull", "Vehicle is full or you don't have access!" )
+	language.Add( "tool.switchableseats.occupied", "This seat is occupied by " )
 end
 if SERVER then
 	TOOL.Seats = {}
@@ -44,6 +48,8 @@ function TOOL:SelectVehicle( ent )
 		elseif v:IsVehicle() then
 			if v.SSeat or v.SSExit then
 				Table[ v:EntIndex() ] = {["Key"] = v.SSeat, ["Exit"] = v.SSExit}
+				v.SSeat = nil
+				v.SSExit = nil
 				duplicator.StoreEntityModifier( v , "SWITCHABLESEATS_Seats", {} )
 			else			
 				Table[ v:EntIndex() ] = {}
@@ -164,8 +170,8 @@ end
 
 function TOOL.BuildCPanel(panel)
 	
-	panel:AddControl( "Header", { Text = "#tool.battlefieldseats.name", Description = "#tool.battlefieldseats.desc" } )
-	panel:AddControl( "Button", { Label = "#tool.battlefieldseats.setexit", Command = "switchableseats_setout"} )
+	panel:AddControl( "Header", { Text = "#tool.switchableseats.name", Description = "#tool.switchableseats.desc" } )
+	panel:AddControl( "Button", { Label = "#tool.switchableseats.setexit", Command = "switchableseats_setout"} )
 	
 	for num = 1, 9 do
 		

@@ -104,6 +104,27 @@ if SERVER then
 	util.AddNetworkString("SWITCHABLESEATS_update")
 	
 	if not SWITCHABLESEATS then SWITCHABLESEATS = {} end
+	
+	local CanUse = function(ply, ent) print("pingaz"); return true end
+	if CPPI then 
+		local Name = CPPI:GetName()
+		if Name == "Falco's prop protection" then
+			print("Falco's prop protection")
+			CanUse = function(ply, ent) return not FPP.Protect.PlayerUse(ply, ent) != false end
+		end
+		if Name == "Nadmod Prop Protection" then
+			print("Nadmod Prop Protection")
+			CanUse = function(ply, ent) return NADMOD.PlayerUse(ply, ent) != false end
+		end
+		if Name == "Simple Prop Protection" then
+			print("Simple Prop Protection")
+			CanUse = function(ply, ent) return not SPropProtection.PlayerUse(ply, ent) != false end
+		end
+		if Name == "Ulysses Prop Share (UPS)" then
+			print("Ulysses Prop Share (UPS)")
+			CanUse = function(ply, ent) return query(ply, ent, "use") end
+		end
+	end
 	 
 	duplicator.RegisterEntityModifier( "SWITCHABLESEATS_Seats", function( ply , Entity , data)
 		if !IsValid( Entity ) then return end
@@ -118,16 +139,20 @@ if SERVER then
 		duplicator.StoreEntityModifier( Entity, "SWITCHABLESEATS_Doors", data )
 	end)
 	
+	local function FixView( ply )
+		ply:SetEyeAngles( (Vector(0,1,0)):Angle() )
+	end
+	
 	local function SwitchSeats( ply, ent )
 		if ent:GetDriver() and ent:GetDriver():IsPlayer() then
-			ply:PrintMessage(HUD_PRINTCENTER, "This seat is occupied by "..ent:GetDriver():GetName())
-		else
+			ply:SendHint("#tool.switchableseats.occupied"..ent:GetDriver():GetName(),3)
+		elseif CanUse(ply, ent) then
 			--local Ang = ply:EyeAngles()
 			--Ang.r = 0
 			ply:GetVehicle():SetThirdPersonMode(false)
 			ply:ExitVehicle()
 			ply:EnterVehicle(ent)
-			--ply:SetEyeAngles( Ang )
+			FixView( ply )
 		end
 	end
 	
@@ -182,7 +207,7 @@ if SERVER then
 		if ply:GetActiveWeapon():GetClass() != "gmod_tool" then return end
 		local TOOL = ply:GetActiveWeapon():GetToolObject()
 		
-		if not TOOL.Seats then ply:PrintMessage(HUD_PRINTCENTER, "You need to select vehicle with seats first!"); return end
+		if not TOOL.Seats then ply:SendHint("#tool.switchableseats.selvegfirst", 3); return end
 		
 		local Pos = ply:GetPos()
 		
@@ -204,8 +229,8 @@ if SERVER then
 		if ply:GetActiveWeapon():GetClass() != "gmod_tool" then return end
 		local TOOL = ply:GetActiveWeapon():GetToolObject()
 		
-		if not TOOL.Seats then ply:PrintMessage(HUD_PRINTCENTER, "You need to select vehicle with seats first!"); return end
-		if not TOOL.SelectedSeat then ply:PrintMessage(HUD_PRINTCENTER, "You need to select a seat first!"); return end
+		if not TOOL.Seats then ply:SendHint("#tool.switchableseats.selvegfirst", 3); return end
+		if not TOOL.SelectedSeat then ply:SendHint("#tool.switchableseats.selseatfirst", 3); return end
 		
 		for k,v in pairs( TOOL.Seats ) do
 			if v.Key == arg then
@@ -232,28 +257,36 @@ if SERVER then
 		if key != IN_USE then return end
 		if ply.SSJustLeft then ply.SSJustLeft = nil; return end
 		
-		trace = util.TraceLine( util.GetPlayerTrace( ply ) )
-		local ent = trace.Entity
-		
+		local trace = util.TraceLine( util.GetPlayerTrace( ply ) )
+		local ent = trace.Entity		
+
 		if not IsValid(ent) or not ent.SSDoor then return end
-		local Entities = constraint.GetAllConstrainedEntities( ent )
-		
-		local Seats = SS_FormatTable( ent )
-		if not Seats then return end
-		for _,v	in pairs( Seats ) do
+		local dist = ent:GetPos():Distance(ply:GetPos())
+		if dist > 100 then return end
+				
+		local Entities = SS_FormatTable( ent )
+		if not Entities then return end
+		local Seats = {}
+		for _,v	in pairs( Entities ) do
 			if v.SSeat then
 				Seats[v.SSeat] = v
 			end
 		end
+		for _,v	in pairs( Entities ) do
+			if v:IsVehicle() and not table.HasValue( Seats, v ) then
+				table.insert( Seats, v )
+			end
+		end
 		
 		for k,v in ipairs( Seats ) do
-			if v:GetDriver() == NULL then
+			if v:GetDriver() == NULL and CanUse(ply, v) then
 				ply:EnterVehicle( v )
+				FixView( ply )
 				return
 			end
 		end
 		
-		ply:PrintMessage(HUD_PRINTCENTER, "Vehicle is full!")
+		ply:SendHint("#tool.switchableseats.vehfull", 5)
 	end)
 	
 	hook.Add("PlayerButtonUp", "SWITCHABLESEATS_Switching", function( ply, keypressed )
