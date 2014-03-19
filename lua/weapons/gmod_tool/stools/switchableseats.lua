@@ -8,14 +8,9 @@ if CLIENT then
 	language.Add( "Tool.switchableseats.desc", "Allows you to switch between seats without leaving vehicle." )
 	language.Add( "Tool.switchableseats.0", " E+LMB - select vehicle, LMB - select single chair in vehicle, SHIFT+LMB - select entrance props, RMB - Accept changes" )
 	language.Add( "tool.switchableseats.setexit", "Set exit point for this vehicle" )
-	language.Add( "tool.switchableseats.selvegfirst", "You need to select vehicle with seats first!" )
-	language.Add( "tool.switchableseats.selseatfirst", "You need to select a seat first!" )
-	language.Add( "tool.switchableseats.vehfull", "Vehicle is full or you don't have access!" )
-	language.Add( "tool.switchableseats.occupied", "This seat is occupied by " )
+	language.Add( "tool.switchableseats.deleteexit", "Delete exit point for this vehicle" )
 end
-if SERVER then
-	TOOL.Seats = {}
-	
+if SERVER then	
 	function TOOL:SendUpdate( Table )
 		SWITCHABLESEATS:SendUpdate( Table, self:GetOwner() )
 	end
@@ -107,7 +102,7 @@ function TOOL:Holster()
 end
 
 function TOOL:LeftClick( trace )
-	if CLIENT then return true end
+	if CLIENT then return end
 	
 	local ent = trace.Entity
 	local ply = self:GetOwner()
@@ -168,25 +163,35 @@ function TOOL:Reload()
 	self:Cleanup()
 end
 
-function TOOL.BuildCPanel(panel)
-	
-	panel:AddControl( "Header", { Text = "#tool.switchableseats.name", Description = "#tool.switchableseats.desc" } )
-	panel:AddControl( "Button", { Label = "#tool.switchableseats.setexit", Command = "switchableseats_setout"} )
-	
-	for num = 1, 9 do
+if CLIENT then
+	function TOOL.BuildCPanel(panel)
 		
-		local X = 30 + ((num-1)%3)*55
-		local Y = 120 + math.floor((num-1)/3)*55
-	
-		local Button = vgui.Create("DButton")
-		Button:SetParent(panel)
-		Button:SetText(num)
-		Button:SetPos(X,Y)
-		Button:SetSize(50,50)
-		Button.DoClick = function()
-			RunConsoleCommand("switchableseats_setkey", num)
+		panel:AddControl( "Header", { Text = "#tool.switchableseats.name", Description = "#tool.switchableseats.desc" } )
+		
+		panel:AddControl( "Button", { Label = "#tool.switchableseats.setexit", Command = "switchableseats_setout"} )
+		
+		local Parent = vgui.Create("DSizeToContents")
+		Parent:SetParent( panel )
+		Parent:SetSizeX( false )
+		Parent:Dock( TOP )
+		Parent:DockMargin( 10, 10, 10, 0 )
+		Parent:InvalidateLayout()
+		
+		for num = 1, 9 do
+			
+			local X = ((num-1)%3)*55
+			local Y = math.floor((num-1)/3)*55
+		
+			local Button = vgui.Create("DButton")
+			Button:SetParent(Parent)
+			Button:SetText(num)
+			Button:SetPos(X,Y)
+			Button:SetSize(50,50)
+			Button.DoClick = function()
+				RunConsoleCommand("switchableseats_setkey", num)
+			end
+			
 		end
-		
-	end
 	
+	end
 end

@@ -9,6 +9,7 @@ if CLIENT then
 		ent:SetPos( Parent:LocalToWorld(Pos) )
 		ent:SetParent( Parent )
 		ent:SetModel( "models/player.mdl" )
+		ent:SetMaterial( "models/debug/debugwhite" )
 		ent:SetRenderMode( RENDERMODE_TRANSALPHA )
 		ent:SetColor(Color( 200, 200, 0, 150 ))
 		ent:Spawn()
@@ -38,6 +39,11 @@ if CLIENT then
 			HighlightExit( Exit )
 		end
 	end)
+	
+	function SWITCHABLESEATS:Hint( msg )
+		notification.AddLegacy( msg, NOTIFY_ERROR, 3 )
+		surface.PlaySound("buttons/button10.wav")
+	end
 
 	hook.Add( "PreDrawHalos", "SWITCHABLESEATS_Halos", function()
 		if SWITCHABLESEATS and SWITCHABLESEATS.highlightall then
@@ -105,6 +111,7 @@ if SERVER then
 	
 	if not SWITCHABLESEATS then SWITCHABLESEATS = {} end
 	
+	/*
 	local CanUse = function(ply, ent) print("pingaz"); return true end
 	if CPPI then 
 		local Name = CPPI:GetName()
@@ -125,7 +132,9 @@ if SERVER then
 			CanUse = function(ply, ent) return query(ply, ent, "use") end
 		end
 	end
-	 
+	*/
+	local CanUse = function( ply, ent ) local ret = hook.Run( "PlayerUse", ply, ent ); print(ret != false); return ret != false end
+		
 	duplicator.RegisterEntityModifier( "SWITCHABLESEATS_Seats", function( ply , Entity , data)
 		if !IsValid( Entity ) then return end
 		Entity.SSeat = data[1]
@@ -145,7 +154,7 @@ if SERVER then
 	
 	local function SwitchSeats( ply, ent )
 		if ent:GetDriver() and ent:GetDriver():IsPlayer() then
-			ply:SendHint("#tool.switchableseats.occupied"..ent:GetDriver():GetName(),3)
+			ply:SendLua( "SWITCHABLESEATS:Hint( 'This seat is occupied by another player "..ent:GetDriver():GetName().."' )" );
 		elseif CanUse(ply, ent) then
 			--local Ang = ply:EyeAngles()
 			--Ang.r = 0
@@ -173,17 +182,20 @@ if SERVER then
 
 	function SS_FormatTable( ent )
 		if not IsValid( ent ) then return end
-		local Table, Entities, ent2, rounds = {}, constraint.GetAllConstrainedEntities( ent ), ent, 0
+		local Entities = constraint.GetAllConstrainedEntities( ent ) or {}
+		local Table, ent2, rounds = {}, ent, 0
 		
-		while Entities and table.Count(Entities)<=1 do
-			if ent2:GetParent() then ent2 = ent2:GetParent() end
+		Entities[ ent ] = {}
+		
+		while ent2:GetParent() ~= NULL do
+			ent2 = ent2:GetParent()
 			Entities = constraint.GetAllConstrainedEntities( ent2 )
 			rounds = rounds + 1
 			if rounds > 9 then return end
 		end
 		
 		for k,_ in pairs( Entities ) do
-			if IsValid(k) and k != NULL then
+			if IsValid(k) and k ~= NULL then
 				if (k.SSDoor or k:IsVehicle()) and not Table[k:EntIndex()] then
 					Table[k:EntIndex()] = k
 				end
@@ -207,7 +219,7 @@ if SERVER then
 		if ply:GetActiveWeapon():GetClass() != "gmod_tool" then return end
 		local TOOL = ply:GetActiveWeapon():GetToolObject()
 		
-		if not TOOL.Seats then ply:SendHint("#tool.switchableseats.selvegfirst", 3); return end
+		if not TOOL.Seats then ply:SendLua( "SWITCHABLESEATS:Hint( 'You need to select vehicle with seats first!' )" ); return end
 		
 		local Pos = ply:GetPos()
 		
@@ -229,8 +241,8 @@ if SERVER then
 		if ply:GetActiveWeapon():GetClass() != "gmod_tool" then return end
 		local TOOL = ply:GetActiveWeapon():GetToolObject()
 		
-		if not TOOL.Seats then ply:SendHint("#tool.switchableseats.selvegfirst", 3); return end
-		if not TOOL.SelectedSeat then ply:SendHint("#tool.switchableseats.selseatfirst", 3); return end
+		if not TOOL.Seats then ply:SendLua( "SWITCHABLESEATS:Hint( 'You need to select vehicle with seats first!' )" ); return end
+		if not TOOL.SelectedSeat then ply:SendLua( "SWITCHABLESEATS:Hint( 'You need to select a seat first!' )" ); return end
 		
 		for k,v in pairs( TOOL.Seats ) do
 			if v.Key == arg then
@@ -286,7 +298,7 @@ if SERVER then
 			end
 		end
 		
-		ply:SendHint("#tool.switchableseats.vehfull", 5)
+		ply:SendLua( "SWITCHABLESEATS:Hint( 'Vehicle is full or you don't have access!' )" );
 	end)
 	
 	hook.Add("PlayerButtonUp", "SWITCHABLESEATS_Switching", function( ply, keypressed )
