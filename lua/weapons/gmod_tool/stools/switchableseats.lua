@@ -4,12 +4,15 @@ TOOL.Command		= nil
 TOOL.ConfigName		= ""
 
 if CLIENT then
-	language.Add( "tool.switchableseats.name", "Switchable seats - BETA" )
+	language.Add( "tool.switchableseats.name", "Switchable seats" )
 	language.Add( "Tool.switchableseats.desc", "Allows you to switch between seats without leaving vehicle." )
 	language.Add( "Tool.switchableseats.0", " E+LMB - select vehicle, LMB - select single chair in vehicle, SHIFT+LMB - select entrance props, RMB - Accept changes" )
-	language.Add( "tool.switchableseats.setexit", "Set exit point for this vehicle" )
-	language.Add( "tool.switchableseats.deleteexit", "Delete exit point for this vehicle" )
+	language.Add( "tool.switchableseats.setkey", "Assing key to selected seat" )
+	language.Add( "tool.switchableseats.setexit", "Add an exit point for this vehicle")
+	language.Add( "tool.switchableseats.deleteexit", "Delete previous exit point" )
+	language.Add( "tool.switchableseats.playerlist", "Show list of players in current vehicle" )
 end
+
 if SERVER then	
 	function TOOL:SendUpdate( Table )
 		SWITCHABLESEATS:SendUpdate( Table, self:GetOwner() )
@@ -92,6 +95,7 @@ function TOOL:Cleanup()
 	self.Seats = nil
 	self.SelectedSeat = nil
 	self.Doors = nil
+	self.Exits = nil
 	
 	self:SendUpdate( {} )
 end
@@ -102,24 +106,24 @@ function TOOL:Holster()
 end
 
 function TOOL:LeftClick( trace )
-	if CLIENT then return end
+	if CLIENT then return true end
 	
 	local ent = trace.Entity
 	local ply = self:GetOwner()
 	
-	if ply:KeyDown(IN_USE) then -- Zaznaczamy caly pojazd		
+	if ply:KeyDown(IN_USE) then		
 	
 		if not IsValid( ent ) or ent:IsPlayer() then return false end
 		self:SelectVehicle( ent )
 		
-	elseif self.Seats then -- czy jest jakis zaznaczony pojazd i czy zaznaczamy jedno z jego krzesl
+	elseif self.Seats then
 	
 		if ply:KeyDown(IN_SPEED) then
 			if not IsValid( ent ) or ent:GetClass() != "prop_physics" then return false end
 			self:SelectDoor( ent )
 		else
 			local plytrace = util.GetPlayerTrace( ply )
-			plytrace.filter = function( entity ) if ( entity:GetClass() == "prop_vehicle_prisoner_pod" ) then return true end end -- chcemy wylacznie dzialac na krzeslach
+			plytrace.filter = function( entity ) if ( entity:GetClass() == "prop_vehicle_prisoner_pod" ) then return true end end
 			trace2 = util.TraceLine( plytrace )
 			local ent2 = trace2.Entity
 			
@@ -133,15 +137,18 @@ function TOOL:LeftClick( trace )
 end
 
 function TOOL:RightClick()
-	if CLIENT or not SWITCHABLESEATS or not self.Seats then return false end
-	
+	if CLIENT or not self.Seats then return true end
 	
 	for k,v in pairs( self.Seats ) do
 		local ent = Entity(k)
-		if IsValid(ent) then 
+		if IsValid(ent) then
 			ent.SSeat = v.Key
-			ent.SSExit = v.Exit
-			duplicator.StoreEntityModifier( ent , "SWITCHABLESEATS_Seats", {v.Key, v.Exit} )
+			local Exit = v.Exit
+			if Exit then
+				table.sort( Exit, function(a, b) return a:Length() < b:Length() end )
+				ent.SSExit = Exit
+			end
+			duplicator.StoreEntityModifier( ent , "SWITCHABLESEATS_Seats", {v.Key, Exit} )
 		end
 	end
 	
@@ -169,6 +176,7 @@ if CLIENT then
 		panel:AddControl( "Header", { Text = "#tool.switchableseats.name", Description = "#tool.switchableseats.desc" } )
 		
 		panel:AddControl( "Button", { Label = "#tool.switchableseats.setexit", Command = "switchableseats_setout"} )
+		panel:AddControl( "Button", { Label = "#tool.switchableseats.deleteexit", Command = "switchableseats_deleteout"} )
 		
 		local Parent = vgui.Create("DSizeToContents")
 		Parent:SetParent( panel )
@@ -177,10 +185,11 @@ if CLIENT then
 		Parent:DockMargin( 10, 10, 10, 0 )
 		Parent:InvalidateLayout()
 		
-		for num = 1, 9 do
+		for num = 1, 10 do
 			
-			local X = ((num-1)%3)*55
-			local Y = math.floor((num-1)/3)*55
+			local X = ((num-1)%4)*55
+			local Y = math.floor((num-1)/4)*55
+			if num == 10 then num = 0 end
 		
 			local Button = vgui.Create("DButton")
 			Button:SetParent(Parent)
@@ -192,6 +201,8 @@ if CLIENT then
 			end
 			
 		end
-	
+		
+		panel:AddControl( "CheckBox", { Label = "#tool.switchableseats.playerlist", Command = "switchableseats_playerlist" } )
+		
 	end
 end
